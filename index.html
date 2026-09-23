@@ -5,246 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Blog de Prácticas</title>
 
-<style>
-  :root {
-    --bg-0: #0b0d0b;
-    --bg-1: #12140f;
-    /*
-    --bg-0: #031700;
-    --bg-1: #354f26;
-    */
-    --bg-2: #181b14;
-    --line: #2a2f22;
-    --lime: #c6ff5c;
-    --lime-dim: #8fbf3f;
-    --text: #eef1e6;
-    --text-dim: #9aa694;
-  }
-
-  * { box-sizing: border-box; }
-
-  body {
-    margin: 0;
-    background: var(--bg-0);
-    color: var(--text);
-    font-family: "Inter", "Segoe UI", Arial, sans-serif;
-    line-height: 1.55;
-  }
-
-  .layout {
-    display: flex;
-    min-height: 100vh;
-  }
-
-  /* ---------- Sidebar ---------- */
-  .rail {
-    width: 260px;
-    flex-shrink: 0;
-    background: var(--bg-1);
-    border-right: 1px solid var(--line);
-    padding: 32px 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .avatar {
-    width: 96px;
-    height: 96px;
-    border-radius: 6px;
-    object-fit: cover;
-    border: 2px solid var(--lime-dim);
-    filter: grayscale(40%);
-  }
-
-  .rail h1 {
-    font-family: "Arial", "JetBrains Mono", "Courier New", monospace;
-    font-size: 1.05rem;
-    font-weight: 600;
-    margin: 0 0 4px;
-    color: var(--lime);
-  }
-
-  .rail .role {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    margin: 0;
-  }
-
-  .rail dl {
-    margin: 0;
-    font-size: 0.82rem;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 6px 10px;
-  }
-
-  .rail dt {
-    color: var(--text-dim);
-  }
-
-  .rail dd {
-    margin: 0;
-    color: var(--text);
-  }
-
-  .rail .about {
-    font-size: 0.85rem;
-    color: var(--text-dim);
-    border-top: 1px solid var(--line);
-    padding-top: 16px;
-  }
-
-  .rail a.repo {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.78rem;
-    color: var(--lime-dim);
-    text-decoration: none;
-    border: 1px solid var(--line);
-    padding: 8px 10px;
-    border-radius: 4px;
-    text-align: center;
-    transition: border-color .15s ease, color .15s ease;
-  }
-
-  .rail a.repo:hover {
-    border-color: var(--lime);
-    color: var(--lime);
-  }
-
-  /* ---------- Main content ---------- */
-  .main {
-    flex: 1;
-    padding: 40px 48px;
-    max-width: 780px;
-  }
-
-  .main > header {
-    margin-bottom: 32px;
-  }
-
-  .main > header h2 {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 1.5rem;
-    margin: 0 0 6px;
-    letter-spacing: -0.01em;
-  }
-
-  .main > header p {
-    color: var(--text-dim);
-    margin: 0;
-    font-size: 0.92rem;
-  }
-
-  /* Timeline */
-  .timeline {
-    position: relative;
-    padding-left: 28px;
-    border-left: 1px solid var(--line);
-  }
-
-  .entry {
-    position: relative;
-    margin-bottom: 28px;
-  }
-
-  .entry::before {
-    content: "";
-    position: absolute;
-    left: -33px;
-    top: 6px;
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: var(--bg-0);
-    border: 2px solid var(--lime-dim);
-    transition: border-color .15s ease, background .15s ease;
-  }
-
-  .entry a {
-    display: block;
-    text-decoration: none;
-    color: inherit;
-    background: var(--bg-1);
-    border: 1px solid var(--line);
-    border-left: 3px solid var(--line);
-    border-radius: 4px;
-    padding: 16px 20px;
-    transition: border-color .15s ease, background .15s ease;
-  }
-
-  .entry a:hover {
-    border-color: var(--lime-dim);
-    border-left-color: var(--lime);
-    background: var(--bg-2);
-  }
-
-  .entry a:hover + .entry::before,
-  .entry:has(a:hover)::before {
-    border-color: var(--lime);
-    background: var(--lime);
-  }
-
-  .entry .tag {
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.72rem;
-    color: var(--lime-dim);
-  }
-
-  .entry h3 {
-    margin: 6px 0 4px;
-    font-size: 1.05rem;
-    font-weight: 600;
-  }
-
-  .entry .date {
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .entry p {
-    margin: 0 0 8px;
-    font-size: 0.9rem;
-    color: var(--text-dim);
-  }
-
-  .entry ul {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 0.85rem;
-    color: var(--text-dim);
-  }
-
-  /* Empty state — quita este bloque en cuanto añadas tu primera entrada */
-  .empty {
-    border: 1px dashed var(--line);
-    border-radius: 4px;
-    padding: 24px 20px;
-    color: var(--text-dim);
-    font-size: 0.88rem;
-  }
-
-  .empty strong {
-    color: var(--lime);
-    font-family: "JetBrains Mono", monospace;
-    font-weight: 500;
-  }
-
-  footer {
-    padding: 20px 48px;
-    color: var(--text-dim);
-    font-size: 0.78rem;
-    border-top: 1px solid var(--line);
-  }
-
-  @media (max-width: 760px) {
-    .layout { flex-direction: column; }
-    .rail { width: 100%; }
-    .main { padding: 28px 24px; }
-  }
-</style>
+<link rel="stylesheet" href="style.css">
 </head>
 
 <body>
@@ -295,9 +56,45 @@
         </div>
         -->
 
+        <div class="entry">
+          <a href="semanas/semana1.html">
+            <span class="tag">semana 01 · 13/09/2026</span>
+            <h3>Afianzando Bases</h3>
+            <p>Instalaciones, pruebas, preguntas y respuestas.</p>
+            <ul>
+              <li>Instalación de Robotics Backend y pruebas con FollowLine</li>
+              <li>Instalación de Docker, WSL2 y lectura sobre WebRTC</li>
+            </ul>
+          </a>
+        </div>
+
+        <div class="entry">
+          <a href="semanas/semana2.html">
+            <span class="tag">semana 02 · 20/09/2026</span>
+            <h3>Primeros Pasos con Audio</h3>
+            <p>Pruebas con muestreo de audio en Linux con comandos nativos.</p>
+            <ul>
+              <li>Partición de Ubuntu y configuración del entorno</li>
+              <li>Test de muestreo de audio en Linux</li>
+            </ul>
+          </a>
+        </div>
+
+        <div class="entry">
+          <a href="semanas/semana3.html">
+            <span class="tag">semana 03 · 27/09/2026</span>
+            <h3>Audio: servidor -> navegador -> altavoces</h3>
+            <p>,</p>
+            <ul>
+              <li>.</li>
+              <li>.</li>
+            </ul>
+          </a>
+        </div>
+
         <div class="empty">
-          Todavía no hay entradas. <strong>Semana 1 </strong> se publicará
-          aquí en cuanto esté lista.
+          Las siguientes <strong>semanas</strong> se publicarán
+          aquí en cuanto estén listas.
         </div>
 
       </div>
