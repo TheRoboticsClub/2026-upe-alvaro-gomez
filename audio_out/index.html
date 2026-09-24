@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Audio por WebSocket</title>
+</head>
+<body>
+  <h1>Audio por WebSocket</h1>
+  <button id="connect-button">Conectar y recibir audio</button>
+  <p id="status">Desconectado</p>
+  <audio id="audio-player" controls></audio>
+
+  <script>
+    const connectButton = document.querySelector('#connect-button');
+    const status = document.querySelector('#status');
+    const audioPlayer = document.querySelector('#audio-player');
+    let objectUrl;
+
+    connectButton.addEventListener('click', () => {
+      connectButton.disabled = true;
+      status.textContent = 'Conectando...';
+
+      const socket = new WebSocket('ws://127.0.0.1:8765');
+      socket.binaryType = 'arraybuffer';
+
+      socket.addEventListener('open', () => {
+        status.textContent = 'Recibiendo el audio completo...';
+      });
+
+      socket.addEventListener('message', async (event) => {
+        if (typeof event.data === 'string') {
+          const message = JSON.parse(event.data);
+
+          if (message.type === 'audio_start') {
+            status.textContent = `Recibiendo ${message.filename} (${message.size} bytes)...`;
+          } else if (message.type === 'audio_end') {
+            status.textContent = 'Audio recibido. Reproduciendo.';
+          } else if (message.type === 'error') {
+            status.textContent = message.message;
+            connectButton.disabled = false;
+          }
+          return;
+        }
+
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl);
+        }
+
+        const audioBlob = new Blob([event.data], { type: 'audio/mpeg' });
+        objectUrl = URL.createObjectURL(audioBlob);
+        audioPlayer.src = objectUrl;
+
+        try {
+          await audioPlayer.play();
+        } catch (error) {
+          status.textContent = 'Audio recibido. Pulsa el botón de reproducción.';
+        }
+      });
+
+      socket.addEventListener('error', () => {
+        status.textContent = 'No se pudo conectar con el servidor.';
+        connectButton.disabled = false;
+      });
+
+      socket.addEventListener('close', () => {
+        connectButton.disabled = false;
+      });
+    });
+  </script>
+</body>
+</html>
