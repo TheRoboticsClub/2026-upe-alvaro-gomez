@@ -1,0 +1,49 @@
+Primera fase del proyecto: un servidor Python lee un archivo MP3 local, lo envía
+completo al navegador mediante WebSocket y el navegador lo reproduce usando el
+reproductor de audio HTML.
+
+Componentes:
+- Python 3.
+- Un navegador moderno con soporte para WebSocket y MP3.
+- El archivo `file_example_MP3_700KB.mp3` que se provee en la raíz de este proyecto.
+
+Archivos:
+- server.py: inicia el servidor HTTP y el servidor WebSocket.
+- index.html: interfaz web y lógica del cliente WebSocket.
+- file_example_MP3_700KB.mp3: archivo de audio que lee el servidor.
+- requirements.txt: lista de librerías externas necesarias.
+
+Pasos:
+-Abrimos un terminal en la carpeta del proyecto:
+    cd /home/rh/Documentos/audio_out
+- Creamos un entorno virtual. Solo tiene que crearse una vez. En las siguientes sesiones basta con volver a activarlo.
+    python3 -m venv .venv
+Activamos el entorno virtual:
+    source .venv/bin/activate
+Instalamos la dependencia del servidor:
+    python -m pip install -r requirements.txt
+Arrancamos el servidor:
+    python server.py
+Abrimos "http://127.0.0.1:8000" en el navegador y pulsamos "Conectar y recibir
+audio". El botón inicia la conexión y el navegador reproduce el sonido.
+
+Nota: recomiendo usar "python -m pip install [...]" y no "pip install [...]", para asegurar que las dependencias se instalan en el entorno actual (me pasó).
+
+
+Fase 2: se sustituye el envío del MP3 completo por un flujo de audio en tiempo real usando WebRTC. El navegador ya no recibe un archivo entero y el WebSocket pasa a usarse solo para la señalización inicial (el intercambio de SDP necesario para establecer esa conexión).
+
+WebRTC y WebSocket:
+Antes de que dos partes puedan intercambiarse audio por WebRTC, necesitan negociar cómo hacerlo: qué códecs soportan, por dónde pueden conectarse, etc. Ese intercambio previo se llama **señalización**, y WebRTC no impone cómo hacerla — solo exige que, de alguna manera, cada lado le pueda pasar al otro un texto (en formato SDP) que describe su sesión. En este caso, ese texto viaja por WebSocket, como ya teníamos montado desde la Fase 1.
+
+Componentes:
+Los mismos que en la Fase 1.
+
+Archivos:
+- server.py: un único servidor "aiohttp" que sirve la página HTML y gestiona la señalización por WebSocket.
+- index.html: interfaz web y lógica del cliente WebRTC.
+- file_example_MP3_700KB.mp3: archivo de audio que lee el servidor.
+- requirements.txt: lista de librerías externas necesarias. La librería "websockets" ya no es necesaria, el soporte de WebSocket ahora lo aporta "aiohttp".
+
+Pasos:
+Los mismos que en la fase 1.
+Abrimos `http://127.0.0.1:8000` en el navegador y pulsamos "Conectar y recibir audio". El audio empieza a sonar en cuanto se completa la conexión WebRTC, sin esperar a que se descargue el archivo entero.
