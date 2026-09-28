@@ -1,1 +1,53 @@
+---
+title: "Semana NN: RELLENAR título corto"
+date: 2026-09-28 10:00:00 +0200
+categories: [Prácticas, Semanales]
+tags: [jderobot, unibotics]
+description: "RELLENAR resumen de una línea (aparece en la portada y en SEO)"
+---
 
+<!-- Cabecera: quita "image" si la semana no tiene imagen destacada -->
+
+## Resumen de la semana
+
+RELLENAR: 2-3 frases con lo más importante que se ha hecho.
+
+## Objetivos
+
+- RELLENAR objetivo 1
+- RELLENAR objetivo 2
+
+## Trabajo realizado
+
+### RELLENAR tarea 1
+
+RELLENAR: qué se hizo y cómo.
+
+<!-- PLACEHOLDER DE IMAGEN: copia y pega este bloque cuantas veces quieras -->
+![RELLENAR texto alternativo](/assets/img/posts/semana-NN/RELLENAR.png){: w="700" h="400" }
+_RELLENAR pie de imagen_
+
+### RELLENAR tarea 2
+
+RELLENAR: descripción.
+
+```python
+# RELLENAR: fragmento de código relevante (comentado brevemente)
+```
+
+## Problemas encontrados y soluciones
+
+- **Problema:** RELLENAR
+  **Solución:** RELLENAR
+
+## Resultados
+
+RELLENAR: qué funciona ya, capturas, demos o enlaces al repositorio.
+
+## Próximos pasos
+
+- [ ] RELLENAR tarea para la semana siguiente
+
+## Recursos
+
+- [RELLENAR nombre del enlace](https://RELLENAR)

@@ -2,11 +2,9 @@
 
 Un único servidor aiohttp (sin hilos, todo en el mismo bucle async) hace dos cosas:
   - GET /     sirve la página (index.html)
-  - GET /ws   WebSocket de señalización: recibe la oferta SDP del navegador
-              y responde con la respuesta SDP
+  - GET /ws   WebSocket de señalización: recibe la oferta SDP del navegadory responde con la respuesta SDP
 
-El audio en sí NO pasa por el WebSocket: una vez negociada la conexión,
-viaja directamente por WebRTC (RTP/Opus) entre aiortc y el navegador.
+El audio en sí NO pasa por el WebSocket: una vez negociada la conexión, viaja directamente por WebRTC (RTP/Opus) entre aiortc y el navegador.
 """
 
 import json
@@ -15,6 +13,8 @@ from pathlib import Path
 from aiohttp import web, WSMsgType
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from aiortc.contrib.media import MediaPlayer
+
+"""imports y sus llamadas han sido revisados por IA, revisar a mano"""
 
 PROJECT_DIR = Path(__file__).parent
 AUDIO_PATH = PROJECT_DIR / "file_example_MP3_700KB.mp3"
@@ -65,8 +65,7 @@ async def negotiate(offer_message: dict) -> dict:
             await pc.close()
             pcs.discard(pc)
 
-    # MediaPlayer decodifica el archivo, lo trocea en frames y lo ritma a
-    # tiempo real: es funcionalidad de aiortc, no código propio.
+    # MediaPlayer decodifica el archivo, lo trocea en frames y lo ritma a tiempo real: es funcionalidad de aiortc, no código propio.
     player = MediaPlayer(str(AUDIO_PATH))
     pc.addTrack(player.audio)
 
