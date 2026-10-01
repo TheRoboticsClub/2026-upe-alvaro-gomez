@@ -3,50 +3,60 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Audio por WebRTC</title>
+  <title>Audio por WebSocket</title>
 </head>
 <body>
-  <h1>Audio por WebRTC</h1>
+  <h1>Audio por WebSocket</h1>
   <button id="connect-button">Conectar y recibir audio</button>
   <p id="status">Desconectado</p>
-  <audio id="audio-player" autoplay controls></audio>
+  <audio id="audio-output" autoplay controls></audio>
 
   <script>
     const connectButton = document.querySelector('#connect-button');
     const status = document.querySelector('#status');
-    const audioPlayer = document.querySelector('#audio-player');
+    const audioOutput = document.querySelector('#audio-output');
+    const SAMPLE_RATE = 48000; // debe coincidir con lo que manda el servidor
 
-    connectButton.addEventListener('click', () => {
+    connectButton.addEventListener('click', async () => {
       connectButton.disabled = true;
       status.textContent = 'Conectando...';
 
-      const pc = new RTCPeerConnection();
-      pc.addTransceiver('audio', { direction: 'recvonly' });
+      // AudioContext debe crearse tras un gesto del usuario (el clic).
+      const audioCtxt = new AudioContext({ sampleRate: SAMPLE_RATE });
+      await audioCtxt.audioWorklet.addModule('/pcm-player-worklet.js');
 
-      // Cuando llega la pista remota, se conecta al reproductor.
-      pc.addEventListener('track', (event) => {
-        audioPlayer.srcObject = event.streams[0];
+      const player = new AudioWorkletNode(audioCtxt, 'pcm-player', {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      });
+      const mediaStreamDestination = audioCtxt.createMediaStreamDestination();
+      player.connect(mediaStreamDestination);
+      audioOutput.srcObject = mediaStreamDestination.stream;
+      await audioOutput.play();
+
+      const socket = new WebSocket(`ws://${location.host}/ws`);
+      socket.binaryType = 'arraybuffer';
+
+      socket.addEventListener('open', () => {
         status.textContent = 'Recibiendo audio.';
       });
 
-      // WebSocket relativo al host actual: mismo servidor que sirve la página.
-      const socket = new WebSocket(`ws://${location.host}/ws`);
-
-      socket.addEventListener('open', async () => {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        socket.send(JSON.stringify({ type: offer.type, sdp: offer.sdp }));
+      socket.addEventListener('message', (event) => {
+        // Cada mensaje es un frame PCM de 16 bits; lo pasamos a Float32
+        // (rango -1..1), que es lo que espera Web Audio, y se lo mandamos
+        // al worklet.
+        const int16 = new Int16Array(event.data);
+        const float32 = new Float32Array(int16.length);
+        for (let i = 0; i < int16.length; i++) {
+          float32[i] = int16[i] / 32768;
+        }
+        player.port.postMessage(float32, [float32.buffer]);
       });
 
-      socket.addEventListener('message', async (event) => {
-        const message = JSON.parse(event.data);
-        if (message.error) {
-          status.textContent = message.error;
-          connectButton.disabled = false;
-          return;
-        }
-        // Respuesta SDP del servidor: completa el intercambio y arranca WebRTC.
-        await pc.setRemoteDescription(message);
+      socket.addEventListener('close', () => {
+        status.textContent = 'Desconectado.';
+        connectButton.disabled = false;
       });
 
       socket.addEventListener('error', () => {

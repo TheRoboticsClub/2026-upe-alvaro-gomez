@@ -1,25 +1,25 @@
-"""Servidor de audio por WebRTC.
+"""Servidor de audio por WebSocket.
 
-Un único servidor aiohttp (sin hilos, todo en el mismo bucle async) hace dos cosas:
-  - GET /     sirve la página (index.html)
-  - GET /ws   WebSocket de señalización: recibe la oferta SDP del navegadory responde con la respuesta SDP
+Un único servidor aiohttp (sin hilos) hace tres cosas:
+  - GET /                          sirve la página (index.html)
+  - GET /pcm-player-worklet.js     sirve el AudioWorklet del cliente
+  - GET /ws                        conexión persistente: manda el audio
+                                    en fragmentos PCM cada 20 ms
 
-El audio en sí NO pasa por el WebSocket: una vez negociada la conexión, viaja directamente por WebRTC (RTP/Opus) entre aiortc y el navegador.
+Ya no hay señalización ni WebRTC: el audio viaja directamente por el
+WebSocket, en bruto (PCM), en trozos pequeños y a intervalos cortos.
 """
 
-import json
+import asyncio
+import time
 from pathlib import Path
 
 from aiohttp import web, WSMsgType
-from aiortc import RTCPeerConnection, RTCSessionDescription
-from aiortc.contrib.media import MediaPlayer
 
-"""imports y sus llamadas han sido revisados por IA, revisar a mano"""
+from audio_source import FRAME_MS, SAMPLE_RATE, SAMPLES_PER_FRAME, file_frames
 
 PROJECT_DIR = Path(__file__).parent
 AUDIO_PATH = PROJECT_DIR / "file_example_MP3_700KB.mp3"
-
-pcs = set()  # conexiones activas, para poder cerrarlas todas al apagar el servidor
 
 
 async def index(request: web.Request) -> web.Response:
@@ -28,67 +28,76 @@ async def index(request: web.Request) -> web.Response:
     return web.Response(content_type="text/html", text=html)
 
 
+async def worklet(request: web.Request) -> web.Response:
+    """Sirve el AudioWorklet como JavaScript."""
+    js = (PROJECT_DIR / "pcm-player-worklet.js").read_text()
+    return web.Response(content_type="application/javascript", text=js)
+
+
+async def send_paced(ws: web.WebSocketResponse, path: Path) -> None:
+    """Manda los frames de un archivo por el WebSocket, uno cada 20 ms reales."""
+    start_time = None  # instante real en que empezó el envío
+    samples_sent = 0  # muestras mandadas hasta ahora, para calcular el pacing
+
+    async for frame in file_frames(path):
+        if ws.closed:
+            return
+
+        await ws.send_bytes(frame)
+        samples_sent += SAMPLES_PER_FRAME
+
+        if start_time is None:
+            start_time = time.time()
+            continue
+
+        # Sin esto, como decodificar es más rápido que tiempo real, se
+        # mandaría todo el audio de golpe en vez de a ritmo de reproducción.
+        target = start_time + samples_sent / SAMPLE_RATE
+        delay = target - time.time()
+        if delay > 0:
+            await asyncio.sleep(delay)
+
+
 async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
-    """Señalización: recibe UNA oferta SDP por el socket y responde con la respuesta SDP."""
+    """Cada conexión WebSocket recibe el audio del archivo en streaming."""
     ws = web.WebSocketResponse()
     await ws.prepare(request)
 
-    async for msg in ws:
-        if msg.type != WSMsgType.TEXT:
-            continue
+    if not AUDIO_PATH.is_file():
+        await ws.close(message=f"No se encuentra: {AUDIO_PATH}".encode())
+        return ws
 
-        message = json.loads(msg.data)
-        if message.get("type") != "offer":
-            await ws.send_json({"error": "Se esperaba una oferta SDP"})
-            continue
+    send_task = asyncio.create_task(send_paced(ws, AUDIO_PATH))
 
-        if not AUDIO_PATH.is_file():
-            await ws.send_json({"error": f"No se encuentra: {AUDIO_PATH}"})
-            continue
+    async def watch_client():
+        """Si el cliente manda algo o cierra, no hay más que hacer aquí."""
+        async for msg in ws:
+            if msg.type == WSMsgType.ERROR:
+                break
 
-        answer_sdp = await negotiate(message)
-        await ws.send_json(answer_sdp)
-        break  # una sesión = una negociación; el audio ya no pasa por aquí
+    watch_task = asyncio.create_task(watch_client())
+
+    # Terminamos en cuanto pase lo primero: se acaba el archivo, o el
+    # cliente se desconecta. Antes solo mirábamos lo segundo, así que el
+    # socket se quedaba abierto sin mandar nada más al llegar al final
+    # del archivo.
+    done, pending = await asyncio.wait(
+        {send_task, watch_task}, return_when=asyncio.FIRST_COMPLETED
+    )
+    for task in pending:
+        task.cancel()
+
+    if not ws.closed:
+        await ws.close()
 
     return ws
 
 
-async def negotiate(offer_message: dict) -> dict:
-    """Crea la RTCPeerConnection, le añade el audio y hace el intercambio SDP."""
-    pc = RTCPeerConnection()
-    pcs.add(pc)
-
-    @pc.on("connectionstatechange")
-    async def on_state_change():
-        """Quita la conexión del registro cuando el cliente se desconecta."""
-        if pc.connectionState in ("failed", "closed", "disconnected"):
-            await pc.close()
-            pcs.discard(pc)
-
-    # MediaPlayer decodifica el archivo, lo trocea en frames y lo ritma a tiempo real: es funcionalidad de aiortc, no código propio.
-    player = MediaPlayer(str(AUDIO_PATH))
-    pc.addTrack(player.audio)
-
-    offer = RTCSessionDescription(sdp=offer_message["sdp"], type=offer_message["type"])
-    await pc.setRemoteDescription(offer)
-    answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
-
-    return {"sdp": pc.localDescription.sdp, "type": pc.localDescription.type}
-
-
-async def on_shutdown(app: web.Application) -> None:
-    """Cierra todas las conexiones WebRTC abiertas al parar el servidor."""
-    for pc in list(pcs):
-        await pc.close()
-    pcs.clear()
-
-
 def build_app() -> web.Application:
-    """Crea la aplicación aiohttp con sus dos rutas."""
+    """Crea la aplicación aiohttp con sus tres rutas."""
     app = web.Application()
-    app.on_shutdown.append(on_shutdown)
     app.router.add_get("/", index)
+    app.router.add_get("/pcm-player-worklet.js", worklet)
     app.router.add_get("/ws", websocket_handler)
     return app
 
