@@ -1,3 +1,4 @@
 av>=12
 aiohttp
 numpy
+piper-tts

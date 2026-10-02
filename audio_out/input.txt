@@ -1,0 +1,1 @@
+Texto de prueba para Piper. Esto se leerá desde el servidor.

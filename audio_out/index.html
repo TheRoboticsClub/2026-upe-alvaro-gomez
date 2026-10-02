@@ -9,60 +9,75 @@
   <h1>Audio por WebSocket</h1>
   <button id="connect-button">Conectar y recibir audio</button>
   <p id="status">Desconectado</p>
-  <audio id="audio-output" autoplay controls></audio>
+  <!-- <audio id="audio-output" autoplay controls></audio> -->
 
   <script>
     const connectButton = document.querySelector('#connect-button');
     const status = document.querySelector('#status');
-    const audioOutput = document.querySelector('#audio-output');
+  //const audioOutput = document.querySelector('#audio-output');
     const SAMPLE_RATE = 48000; // debe coincidir con lo que manda el servidor
 
+    let player = null;
+ 
     connectButton.addEventListener('click', async () => {
       connectButton.disabled = true;
       status.textContent = 'Conectando...';
-
-      // AudioContext debe crearse tras un gesto del usuario (el clic).
-      const audioCtxt = new AudioContext({ sampleRate: SAMPLE_RATE });
-      await audioCtxt.audioWorklet.addModule('/pcm-player-worklet.js');
-
-      const player = new AudioWorkletNode(audioCtxt, 'pcm-player', {
-        numberOfInputs: 0,
-        numberOfOutputs: 1,
-        outputChannelCount: [1],
-      });
-      const mediaStreamDestination = audioCtxt.createMediaStreamDestination();
-      player.connect(mediaStreamDestination);
-      audioOutput.srcObject = mediaStreamDestination.stream;
-      await audioOutput.play();
-
-      const socket = new WebSocket(`ws://${location.host}/ws`);
-      socket.binaryType = 'arraybuffer';
-
-      socket.addEventListener('open', () => {
-        status.textContent = 'Recibiendo audio.';
-      });
-
-      socket.addEventListener('message', (event) => {
-        // Cada mensaje es un frame PCM de 16 bits; lo pasamos a Float32
-        // (rango -1..1), que es lo que espera Web Audio, y se lo mandamos
-        // al worklet.
-        const int16 = new Int16Array(event.data);
-        const float32 = new Float32Array(int16.length);
-        for (let i = 0; i < int16.length; i++) {
-          float32[i] = int16[i] / 32768;
-        }
-        player.port.postMessage(float32, [float32.buffer]);
-      });
-
-      socket.addEventListener('close', () => {
-        status.textContent = 'Desconectado.';
+ 
+      try {
+        // AudioContext debe crearse tras un gesto del usuario (el clic).
+        const audioCtx = new AudioContext({ sampleRate: SAMPLE_RATE });
+        await audioCtx.audioWorklet.addModule('/pcm-player-worklet.js');
+ 
+        player = new AudioWorkletNode(audioCtx, 'pcm-player', {
+          numberOfInputs: 0,
+          numberOfOutputs: 1,
+          outputChannelCount: [1],
+        });
+        player.connect(audioCtx.destination);
+ 
+        const socket = new WebSocket(`ws://${location.host}/ws`);
+        socket.binaryType = 'arraybuffer';
+ 
+        socket.addEventListener('open', () => {
+          status.textContent = 'Conectado. Esperando audio...';
+        });
+ 
+        socket.addEventListener('message', (event) => {
+          // Un mensaje de texto es JSON de estado ({"status": ...} o
+          // {"error": ...}); un mensaje binario es un frame PCM de audio.
+          if (typeof event.data === 'string') {
+            const message = JSON.parse(event.data);
+            if (message.status) status.textContent = `Estado: ${message.status}`;
+            if (message.error) status.textContent = `Error: ${message.error}`;
+            return;
+          }
+ 
+          // Cada frame PCM de 16 bits se pasa a Float32 (rango -1..1, lo
+          // que espera Web Audio) y se manda al worklet.
+          const int16 = new Int16Array(event.data);
+          const float32 = new Float32Array(int16.length);
+          for (let i = 0; i < int16.length; i++) {
+            float32[i] = int16[i] / 32768;
+          }
+          player.port.postMessage(float32, [float32.buffer]);
+        });
+ 
+        socket.addEventListener('close', () => {
+          status.textContent = 'Desconectado.';
+          connectButton.disabled = false;
+        });
+ 
+        socket.addEventListener('error', () => {
+          status.textContent = 'No se pudo conectar con el servidor.';
+          connectButton.disabled = false;
+        });
+      } catch (err) {
+        // Sin este catch, un fallo aquí (por ejemplo, que el navegador no
+        // encuentre el worklet) dejaba el botón congelado sin ningún aviso.
+        console.error(err);
+        status.textContent = `Error: ${err.message}`;
         connectButton.disabled = false;
-      });
-
-      socket.addEventListener('error', () => {
-        status.textContent = 'No se pudo conectar con el servidor.';
-        connectButton.disabled = false;
-      });
+      }
     });
   </script>
 </body>
