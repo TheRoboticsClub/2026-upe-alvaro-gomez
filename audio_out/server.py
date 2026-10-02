@@ -1,15 +1,3 @@
-"""Servidor de audio por WebSocket.
-
-Un único servidor aiohttp (sin hilos) hace tres cosas:
-  - GET /                          sirve la página (index.html)
-  - GET /pcm-player-worklet.js     sirve el AudioWorklet del cliente
-  - GET /ws                        conexión persistente: manda el audio
-                                    en fragmentos PCM cada 20 ms
-
-Ya no hay señalización ni WebRTC: el audio viaja directamente por el
-WebSocket, en bruto (PCM), en trozos pequeños y a intervalos cortos.
-"""
-
 import asyncio
 import time
 import wave
@@ -30,11 +18,6 @@ PIPER_TEXT_PATH = PROJECT_DIR / "input.txt"
 
 voice: PiperVoice | None = None
 
-#voice = PiperVoice.load(PIPER_MODEL_PATH)
-#with wave.open("test.wav", "wb") as wav_file:
-#    voice.synthesize_wav("Prueba para Piper. Esto no es un simulacro.", wav_file)
-
-
 async def index(request: web.Request) -> web.Response:
     """Sirve la página HTML tal cual."""
     html = (PROJECT_DIR / "index.html").read_text()
@@ -49,7 +32,7 @@ async def worklet(request: web.Request) -> web.Response:
 
 async def send_paced(ws: web.WebSocketResponse, frames) -> None:
     """Manda los frames por el WebSocket, uno cada 20 ms reales."""
-    start_time = None  # instante real en que empezó el envío
+    start_time = None  # instante real en que empieza el envío
     samples_sent = 0  # muestras mandadas hasta ahora, para calcular el pacing
 
     async for frame in frames:
