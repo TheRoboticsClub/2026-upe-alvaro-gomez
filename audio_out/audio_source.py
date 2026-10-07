@@ -1,14 +1,13 @@
-"""Fuente de audio: lee un archivo y lo entrega como PCM en frames de 20 ms.
-
-Contrato: PCM de 16 bits, mono, 48 kHz, en bloques de exactamente 20 ms
-(960 muestras = 1920 bytes). Es el formato que espera el AudioWorklet del
-navegador, así que ni el servidor ni el cliente tienen que hacer más
-conversiones que las de aquí.
-
-La fuente NO controla el ritmo: entrega frames tan rápido como se le piden.
-Quien consume (el bucle de envío por WebSocket, en server.py) decide cada
-cuánto pedir el siguiente frame.
-"""
+# Fuente de audio: lee un archivo y lo entrega como PCM en frames de 20 ms.
+#
+# Contrato: PCM de 16 bits, mono, 48 kHz, en bloques de exactamente 20 ms
+# (960 muestras = 1920 bytes). Es el formato que espera el AudioWorklet del
+# navegador, así que ni el servidor ni el cliente tienen que hacer más
+# conversiones que las de aquí.
+#
+# La fuente NO controla el ritmo: entrega frames tan rápido como se le piden.
+# Quien consume (el bucle de envío por WebSocket, en server.py) decide cada
+# cuánto pedir el siguiente frame.
 
 import asyncio
 from pathlib import Path
@@ -24,13 +23,13 @@ FRAME_BYTES = SAMPLES_PER_FRAME * BYTES_PER_SAMPLE  # 1920
 
 
 class FrameChunker:
-    """Trocea PCM de tamaño irregular en frames de 20 ms exactos."""
+    # Trocea PCM de tamaño irregular en frames de 20 ms exactos.
 
     def __init__(self) -> None:
         self._buffer = bytearray()
 
     def push(self, pcm: bytes) -> list[bytes]:
-        """Añade PCM y devuelve todos los frames completos que ya se puedan sacar."""
+        # Añade PCM y devuelve todos los frames completos que ya se puedan sacar.
         self._buffer.extend(pcm)
         frames = []
         while len(self._buffer) >= FRAME_BYTES:
@@ -39,7 +38,7 @@ class FrameChunker:
         return frames
 
     def flush(self) -> bytes | None:
-        """Devuelve el resto pendiente, relleno de silencio hasta completar 20 ms."""
+        # Devuelve el resto pendiente, relleno de silencio hasta completar 20 ms.
         if not self._buffer:
             return None
         frame = bytes(self._buffer).ljust(FRAME_BYTES, b"\x00")
@@ -48,7 +47,7 @@ class FrameChunker:
 
 
 async def file_frames(path: str | Path) -> AsyncIterator[bytes]:
-    """Decodifica un archivo de audio y lo entrega como frames PCM de 20 ms."""
+    # Decodifica un archivo de audio y lo entrega como frames PCM de 20 ms.
     path = Path(path)
     if not path.is_file():
         raise FileNotFoundError(f"No se encuentra el archivo: {path}")

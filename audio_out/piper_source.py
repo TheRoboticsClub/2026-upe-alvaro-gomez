@@ -1,7 +1,6 @@
-"""Fuente de audio: sintetiza texto a voz con Piper y lo entrega como PCM
-en frames de 20 ms, igual que audio_source.py pero a partir de texto en
-vez de un archivo.
-"""
+# Fuente de audio: sintetiza texto a voz con Piper y lo entrega como PCM
+# en frames de 20 ms, igual que audio_source.py pero a partir de texto en
+# vez de un archivo.
 
 import asyncio
 from typing import AsyncIterator
@@ -14,12 +13,11 @@ from audio_source import SAMPLE_RATE, FrameChunker
 
 
 async def text_frames(text: str, voice: PiperVoice) -> AsyncIterator[bytes]:
-    """Sintetiza `text` con `voice` y entrega frames PCM de 20 ms a 48 kHz.
-
-    Piper sintetiza frase a frase (un AudioChunk por frase), así que cada
-    frase se remuestrea y trocea en cuanto está lista, sin esperar a que
-    termine de sintetizarse el texto completo.
-    """
+    # Sintetiza `text` con `voice` y entrega frames PCM de 20 ms a 48 kHz.
+    #
+    # Piper sintetiza frase a frase (un AudioChunk por frase), así que cada
+    # frase se remuestrea y trocea en cuanto está lista, sin esperar a que
+    # termine de sintetizarse el texto completo.
     chunker = FrameChunker()
     resampler = av.AudioResampler(format="s16", layout="mono", rate=SAMPLE_RATE)
 

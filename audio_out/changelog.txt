@@ -15,7 +15,7 @@ Archivos:
 
 Pasos:
 -Abrimos un terminal en la carpeta del proyecto:
-    cd /home/rh/Documentos/audio_out
+    cd audio_out
 - Creamos un entorno virtual. Solo tiene que crearse una vez. En las siguientes sesiones basta con volver a activarlo.
     python3 -m venv .venv
 Activamos el entorno virtual:
